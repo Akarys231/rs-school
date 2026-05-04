@@ -1,0 +1,29 @@
+.error-trigger-button {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--sans);
+  color: #fff;
+  background: var(--red);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  z-index: 1000;
+}
+
+.error-trigger-button:hover {
+  opacity: 0.85;
+}
+
+@media (max-width: 640px) {
+  .error-trigger-button {
+    bottom: 12px;
+    right: 12px;
+    padding: 6px 14px;
+    font-size: 12px;
+  }
+}
