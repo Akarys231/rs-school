@@ -1,160 +1,126 @@
-import { Component } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Search from './components/Search';
 import CardList from './components/CardList';
 import Spinner from './components/Spinner';
 import ErrorMessage from './components/ErrorMessage';
-import ErrorBoundary from './components/ErrorBoundary';
 import ErrorButton from './components/ErrorButton';
 import Pagination from './components/Pagination';
+import DetailsPanel from './pages/DetailsPanel';
 import { fetchCharacters } from './api';
-import type { AppState } from './types';
+import { useLocalStorage } from './hooks/useLocalStorage';
+import type { Character } from './types';
 import './App.css';
 
 const STORAGE_KEY = 'rick-morty-search-term';
 const HISTORY_KEY = 'rick-morty-search-history';
 const MAX_HISTORY = 10;
 
-class App extends Component<object, AppState> {
-  constructor(props: object) {
-    super(props);
+function App() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [localSearchTerm, setLocalSearchTerm] = useLocalStorage<string>(STORAGE_KEY, '');
+  const [searchHistory, setSearchHistory] = useLocalStorage<string[]>(HISTORY_KEY, []);
 
-    const savedTerm = localStorage.getItem(STORAGE_KEY) || '';
-    const savedHistory = this.loadHistory();
+  const [characters, setCharacters] = useState<Character[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [totalPages, setTotalPages] = useState(0);
 
-    this.state = {
-      characters: [],
-      isLoading: false,
-      error: null,
-      searchTerm: savedTerm,
-      lastSearchedTerm: savedTerm,
-      searchHistory: savedHistory,
-      currentPage: 1,
-      totalPages: 0,
-    };
-  }
+  // Sync with URL params
+  const urlPage = parseInt(searchParams.get('page') || '1', 10);
+  const urlSearch = searchParams.get('search') ?? localSearchTerm;
+  const isDetailsOpen = searchParams.has('details');
 
-  componentDidMount(): void {
-    this.performSearch(this.state.searchTerm, 1);
-  }
-
-  loadHistory(): string[] {
-    try {
-      const raw = localStorage.getItem(HISTORY_KEY);
-      if (raw) {
-        const parsed: unknown = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          return parsed.filter((item): item is string => typeof item === 'string');
-        }
-      }
-    } catch {
-      // ignore parse errors
-    }
-    return [];
-  }
-
-  saveHistory(history: string[]): void {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-  }
-
-  addToHistory(term: string): string[] {
-    if (!term) return this.state.searchHistory;
-
-    const filtered = this.state.searchHistory.filter((item) => item !== term);
-    const updated = [term, ...filtered].slice(0, MAX_HISTORY);
-    this.saveHistory(updated);
-    return updated;
-  }
-
-  performSearch = async (term: string, page: number): Promise<void> => {
-    this.setState({ isLoading: true, error: null });
+  const performSearch = useCallback(async (term: string, page: number) => {
+    setIsLoading(true);
+    setError(null);
 
     try {
       const data = await fetchCharacters(term, page);
-      this.setState({
-        characters: data.results,
-        isLoading: false,
-        currentPage: page,
-        totalPages: data.info.pages,
-      });
+      setCharacters(data.results);
+      setTotalPages(data.info.pages);
     } catch (err: unknown) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'An unexpected error occurred.';
-      this.setState({
-        characters: [],
-        isLoading: false,
-        error: errorMessage,
-        currentPage: 1,
-        totalPages: 0,
-      });
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred.';
+      setCharacters([]);
+      setError(errorMessage);
+      setTotalPages(0);
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, []);
 
-  handleSearch = (term: string): void => {
+  useEffect(() => {
+    performSearch(urlSearch, urlPage);
+  }, [urlSearch, urlPage, performSearch]);
+
+  const handleSearch = (term: string) => {
     const trimmedTerm = term.trim();
 
-    if (trimmedTerm === this.state.lastSearchedTerm) {
-      return;
+    setLocalSearchTerm(trimmedTerm);
+
+    if (trimmedTerm) {
+      setSearchHistory((prev) => {
+        const filtered = prev.filter((item) => item !== trimmedTerm);
+        return [trimmedTerm, ...filtered].slice(0, MAX_HISTORY);
+      });
     }
 
-    localStorage.setItem(STORAGE_KEY, trimmedTerm);
-    const updatedHistory = this.addToHistory(trimmedTerm);
-
-    this.setState(
-      {
-        searchTerm: trimmedTerm,
-        lastSearchedTerm: trimmedTerm,
-        searchHistory: updatedHistory,
-      },
-      () => {
-        this.performSearch(trimmedTerm, 1);
-      }
-    );
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('search', trimmedTerm);
+    newParams.set('page', '1'); // Reset to page 1 on new search
+    setSearchParams(newParams);
   };
 
-  handlePageChange = (page: number): void => {
-    this.performSearch(this.state.searchTerm, page);
+  const handlePageChange = (page: number) => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('page', String(page));
+    setSearchParams(newParams);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  handleRemoveHistoryItem = (term: string): void => {
-    const filtered = this.state.searchHistory.filter((item) => item !== term);
-    this.saveHistory(filtered);
-    this.setState({ searchHistory: filtered });
+  const handleRemoveHistoryItem = (term: string) => {
+    setSearchHistory((prev) => prev.filter((item) => item !== term));
   };
 
-  render() {
-    const { characters, isLoading, error, searchTerm, searchHistory, currentPage, totalPages } = this.state;
+  const handleCardClick = (id: number) => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('details', String(id));
+    setSearchParams(newParams);
+  };
 
-    return (
-      <ErrorBoundary>
-        <div className="app-layout" id="app-layout">
-          <Search
-            initialSearchTerm={searchTerm}
-            onSearch={this.handleSearch}
-            isLoading={isLoading}
-            searchHistory={searchHistory}
-            onRemoveHistoryItem={this.handleRemoveHistoryItem}
-          />
-          <main className="results-section" id="results-section">
-            {isLoading && <Spinner />}
-            {!isLoading && error && <ErrorMessage message={error} />}
-            {!isLoading && !error && (
-              <>
-                <CardList characters={characters} />
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={this.handlePageChange}
-                  isLoading={isLoading}
-                />
-              </>
-            )}
-          </main>
-          <ErrorButton />
-        </div>
-      </ErrorBoundary>
-    );
-  }
+  return (
+    <div className="app-content">
+      <Search
+        initialSearchTerm={urlSearch}
+        onSearch={handleSearch}
+        isLoading={isLoading}
+        searchHistory={searchHistory}
+        onRemoveHistoryItem={handleRemoveHistoryItem}
+      />
+      
+      <div className={`main-layout ${isDetailsOpen ? 'with-details' : ''}`}>
+        <section className="results-section" id="results-section">
+          {isLoading && <Spinner />}
+          {!isLoading && error && <ErrorMessage message={error} />}
+          {!isLoading && !error && (
+            <>
+              <CardList characters={characters} onCardClick={handleCardClick} />
+              <Pagination
+                currentPage={urlPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+                isLoading={isLoading}
+              />
+            </>
+          )}
+        </section>
+        
+        {isDetailsOpen && <DetailsPanel />}
+      </div>
+      
+      <ErrorButton />
+    </div>
+  );
 }
 
 export default App;

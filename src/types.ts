@@ -43,17 +43,16 @@ export interface SearchProps {
   onRemoveHistoryItem: (term: string) => void;
 }
 
-export interface SearchState {
-  inputValue: string;
-  showHistory: boolean;
-}
+
 
 export interface CardProps {
   character: Character;
+  onCardClick?: (id: number) => void;
 }
 
 export interface CardListProps {
   characters: Character[];
+  onCardClick?: (id: number) => void;
 }
 
 export interface ErrorBoundaryProps {
@@ -65,10 +64,6 @@ export interface ErrorBoundaryState {
   error: Error | null;
 }
 
-export interface ErrorButtonState {
-  shouldThrow: boolean;
-}
-
 export interface PaginationProps {
   currentPage: number;
   totalPages: number;
@@ -76,13 +71,4 @@ export interface PaginationProps {
   isLoading: boolean;
 }
 
-export interface AppState {
-  characters: Character[];
-  isLoading: boolean;
-  error: string | null;
-  searchTerm: string;
-  lastSearchedTerm: string;
-  searchHistory: string[];
-  currentPage: number;
-  totalPages: number;
-}
+

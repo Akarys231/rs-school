@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { describe, it, expect, vi } from 'vitest';
 import CardList from './CardList';
 import type { Character } from '../types';
 
@@ -54,5 +55,19 @@ describe('CardList', () => {
     expect(
       screen.getByText('Try a different search term or clear the search to browse all characters.')
     ).toBeInTheDocument();
+  });
+
+  it('передает onCardClick в дочерние компоненты Card', async () => {
+    const user = userEvent.setup();
+    const handleCardClick = vi.fn();
+    
+    render(<CardList characters={mockCharacters} onCardClick={handleCardClick} />);
+    
+    // Кликаем по второй карточке "Morty Smith" (id: 2)
+    const secondCard = screen.getByRole('button', { name: `View details for ${mockCharacters[1].name}` });
+    await user.click(secondCard);
+    
+    expect(handleCardClick).toHaveBeenCalledTimes(1);
+    expect(handleCardClick).toHaveBeenCalledWith(2);
   });
 });

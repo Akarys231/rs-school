@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { describe, it, expect, vi } from 'vitest';
 import Card from './Card';
 import type { Character } from '../types';
 
@@ -65,11 +66,58 @@ describe('Card', () => {
     
     render(<Card character={characterWithoutImage} />);
 
-    // Если src пустой, React может не отрендерить атрибут src вообще,
-    // но сам тег img (или alt текст) должен быть в DOM.
     const image = screen.getByRole('img', { name: 'Rick Sanchez' });
     expect(image).toBeInTheDocument();
     
     consoleSpy.mockRestore();
   });
+
+  it('вызывает onCardClick с ID персонажа при клике', async () => {
+    const user = userEvent.setup();
+    const handleCardClick = vi.fn();
+    
+    render(<Card character={defaultCharacter} onCardClick={handleCardClick} />);
+    
+    const card = screen.getByRole('button', { name: `View details for ${defaultCharacter.name}` });
+    await user.click(card);
+    
+    expect(handleCardClick).toHaveBeenCalledTimes(1);
+    expect(handleCardClick).toHaveBeenCalledWith(1);
+  });
+
+  it('вызывает onCardClick при нажатии Enter', async () => {
+    const user = userEvent.setup();
+    const handleCardClick = vi.fn();
+    
+    render(<Card character={defaultCharacter} onCardClick={handleCardClick} />);
+    
+    const card = screen.getByRole('button', { name: `View details for ${defaultCharacter.name}` });
+    card.focus();
+    await user.keyboard('{Enter}');
+    
+    expect(handleCardClick).toHaveBeenCalledTimes(1);
+    expect(handleCardClick).toHaveBeenCalledWith(1);
+  });
+
+  it('вызывает onCardClick при нажатии Space', async () => {
+    const user = userEvent.setup();
+    const handleCardClick = vi.fn();
+    
+    render(<Card character={defaultCharacter} onCardClick={handleCardClick} />);
+    
+    const card = screen.getByRole('button', { name: `View details for ${defaultCharacter.name}` });
+    card.focus();
+    await user.keyboard(' ');
+    
+    expect(handleCardClick).toHaveBeenCalledTimes(1);
+    expect(handleCardClick).toHaveBeenCalledWith(1);
+  });
+
+  it('не имеет роли button и aria-label если onCardClick не передан', () => {
+    render(<Card character={defaultCharacter} />);
+    
+    const card = screen.queryByRole('button');
+    expect(card).not.toBeInTheDocument();
+  });
 });
+

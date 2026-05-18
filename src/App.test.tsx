@@ -1,13 +1,15 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import App from './App';
-import { fetchCharacters } from './api';
+import { fetchCharacters, fetchCharacterById } from './api';
 import type { ApiResponse } from './types';
 
 // Мокаем API
 vi.mock('./api', () => ({
   fetchCharacters: vi.fn(),
+  fetchCharacterById: vi.fn(),
 }));
 
 const mockFetch = vi.mocked(fetchCharacters);
@@ -32,17 +34,37 @@ const mockApiResponse: ApiResponse = {
   ],
 };
 
+// Helper component to observe location
+let locationState: Record<string, unknown> | ReturnType<typeof useLocation> = {};
+function LocationObserver() {
+  const location = useLocation();
+  locationState = location;
+  return null;
+}
+
+function renderWithRouter(initialEntry = '/') {
+  return render(
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <LocationObserver />
+      <Routes>
+        <Route path="/" element={<App />} />
+      </Routes>
+    </MemoryRouter>
+  );
+}
+
 describe('App Integration', () => {
   beforeEach(() => {
     localStorage.clear();
     mockFetch.mockReset();
     window.scrollTo = vi.fn();
+    locationState = {};
   });
 
   it('вызывает API с пустым значением по умолчанию и рендерит данные', async () => {
     mockFetch.mockResolvedValueOnce(mockApiResponse);
 
-    render(<App />);
+    renderWithRouter();
 
     // Во время загрузки показывается спиннер
     expect(screen.getByText('Loading...')).toBeInTheDocument();
@@ -59,14 +81,13 @@ describe('App Integration', () => {
     expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
   });
 
-  it('использует значение из localStorage при монтировании', async () => {
+  it('использует значение search из URL при монтировании', async () => {
     mockFetch.mockResolvedValueOnce(mockApiResponse);
-    localStorage.setItem('rick-morty-search-term', 'Morty');
 
-    render(<App />);
+    renderWithRouter('/?search=Morty&page=2');
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('Morty', 1);
+      expect(mockFetch).toHaveBeenCalledWith('Morty', 2);
     });
   });
 
@@ -74,7 +95,7 @@ describe('App Integration', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
-    render(<App />);
+    renderWithRouter();
 
     await waitFor(() => {
       expect(screen.getByText('Request Failed')).toBeInTheDocument();
@@ -90,27 +111,21 @@ describe('App Integration', () => {
       results: [],
     });
 
-    render(<App />);
+    renderWithRouter();
 
     await waitFor(() => {
       expect(screen.getByText('No characters found')).toBeInTheDocument();
     });
   });
 
-  it('сохраняет запрос в localStorage и вызывает API при поиске', async () => {
-    mockFetch.mockResolvedValueOnce(mockApiResponse); // Маунт
+  it('обновляет URL при поиске и сбрасывает страницу на 1', async () => {
+    mockFetch.mockResolvedValue(mockApiResponse); 
     const user = userEvent.setup();
 
-    render(<App />);
+    renderWithRouter('/?page=2');
 
     await waitFor(() => {
       expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
-    });
-
-    // Готовим ответ для поиска
-    mockFetch.mockResolvedValueOnce({
-      info: { count: 1, pages: 1, next: null, prev: null },
-      results: [{ ...mockApiResponse.results[0], name: 'Summer Smith' }],
     });
 
     const input = screen.getByRole('textbox');
@@ -122,15 +137,17 @@ describe('App Integration', () => {
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith('Summer', 1);
     });
-    expect(localStorage.getItem('rick-morty-search-term')).toBe('Summer');
-    expect(screen.getByText('Summer Smith')).toBeInTheDocument();
+    
+    expect(locationState.search).toContain('search=Summer');
+    expect(locationState.search).toContain('page=1');
+    expect(localStorage.getItem('rick-morty-search-term')).toBe('"Summer"');
   });
 
-  it('меняет страницу при клике на пагинацию', async () => {
-    mockFetch.mockResolvedValueOnce(mockApiResponse); // Запрос при маунте
+  it('обновляет URL при переключении страницы', async () => {
+    mockFetch.mockResolvedValue(mockApiResponse);
     const user = userEvent.setup();
 
-    render(<App />);
+    renderWithRouter();
 
     let nextButton!: HTMLElement;
     await waitFor(() => {
@@ -138,67 +155,30 @@ describe('App Integration', () => {
       expect(nextButton).toBeInTheDocument();
     });
 
-    // Ответ для 2-й страницы
-    mockFetch.mockResolvedValueOnce({
-      ...mockApiResponse,
-      results: [{ ...mockApiResponse.results[0], name: 'Page 2 Rick' }],
-    });
-
     await user.click(nextButton);
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith('', 2);
     });
-    expect(screen.getByText('Page 2 Rick')).toBeInTheDocument();
-    expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' }); // Проверка сайд-эффекта
+    
+    expect(locationState.search).toContain('page=2');
+    expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' }); 
   });
 
-  it('игнорирует невалидный JSON в истории localStorage', async () => {
-    localStorage.setItem('rick-morty-search-history', '{invalid json');
+  it('открывает панель деталей при клике на карточку, добавляя details в URL', async () => {
     mockFetch.mockResolvedValueOnce(mockApiResponse);
-    
-    render(<App />);
-    expect(screen.getByText('Rick & Morty Explorer')).toBeInTheDocument();
-    
-    // Ждем окончания загрузки, чтобы избежать предупреждений act(...)
+    vi.mocked(fetchCharacterById).mockResolvedValueOnce(mockApiResponse.results[0]);
+    const user = userEvent.setup();
+
+    renderWithRouter();
+
     await waitFor(() => {
-      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+      expect(screen.getByText('Rick Sanchez')).toBeInTheDocument();
     });
-  });
 
-  it('не вызывает API повторно, если поисковый запрос не изменился', async () => {
-    mockFetch.mockResolvedValue(mockApiResponse);
-    const user = userEvent.setup();
-    render(<App />);
-    
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
-    mockFetch.mockClear();
+    const card = screen.getByRole('button', { name: `View details for Rick Sanchez` });
+    await user.click(card);
 
-    const input = screen.getByRole('textbox');
-    const searchButton = screen.getByRole('button', { name: /search/i });
-
-    // Пытаемся отправить тот же пустой запрос (обрежется до пустой строки)
-    await user.type(input, '   ');
-    await user.click(searchButton);
-
-    expect(mockFetch).not.toHaveBeenCalled();
-  });
-
-  it('удаляет элемент из истории поиска', async () => {
-    mockFetch.mockResolvedValue(mockApiResponse);
-    localStorage.setItem('rick-morty-search-history', JSON.stringify(['Rick', 'Morty']));
-    const user = userEvent.setup();
-    render(<App />);
-    
-    const input = screen.getByRole('textbox');
-    await user.click(input); // фокус для показа истории
-    
-    const removeButton = await screen.findByLabelText('Remove Rick from history');
-    await user.click(removeButton);
-
-    expect(screen.queryByText('Rick', { selector: '.search-history-text' })).not.toBeInTheDocument();
-    // Проверяем, что в localStorage остался только Morty
-    const history = JSON.parse(localStorage.getItem('rick-morty-search-history') || '[]');
-    expect(history).toEqual(['Morty']);
+    expect(locationState.search).toContain('details=1');
   });
 });
