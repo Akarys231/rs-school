@@ -2,7 +2,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
   test: {
@@ -20,6 +19,9 @@ export default defineConfig({
         '**/*.spec.ts',
         'src/main.tsx',
         'src/setupTests.ts',
+        'src/api.ts',
+        'src/types.ts',
+        'src/__mocks__/**',
       ],
       thresholds: {
         statements: 80,

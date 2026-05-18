@@ -1,140 +1,132 @@
-import { Component, createRef } from 'react';
-import type { SearchProps, SearchState } from '../types';
+import { useState, useRef, useEffect } from 'react';
+import type { SearchProps } from '../types';
 import './Search.css';
 
-class Search extends Component<SearchProps, SearchState> {
-  private wrapperRef = createRef<HTMLDivElement>();
+function Search({
+  initialSearchTerm,
+  onSearch,
+  isLoading,
+  searchHistory,
+  onRemoveHistoryItem,
+}: SearchProps) {
+  const [inputValue, setInputValue] = useState(initialSearchTerm);
+  const [showHistory, setShowHistory] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
-  constructor(props: SearchProps) {
-    super(props);
-    this.state = {
-      inputValue: props.initialSearchTerm,
-      showHistory: false,
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setShowHistory(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
     };
-  }
+  }, []);
 
-  componentDidMount(): void {
-    document.addEventListener('mousedown', this.handleClickOutside);
-  }
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+  };
 
-  componentWillUnmount(): void {
-    document.removeEventListener('mousedown', this.handleClickOutside);
-  }
-
-  handleClickOutside = (e: MouseEvent): void => {
-    if (
-      this.wrapperRef.current &&
-      !this.wrapperRef.current.contains(e.target as Node)
-    ) {
-      this.setState({ showHistory: false });
+  const handleFocus = () => {
+    if (searchHistory.length > 0) {
+      setShowHistory(true);
     }
   };
 
-  handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    this.setState({ inputValue: e.target.value });
-  };
-
-  handleFocus = (): void => {
-    if (this.props.searchHistory.length > 0) {
-      this.setState({ showHistory: true });
-    }
-  };
-
-  handleSubmit = (e: React.FormEvent<HTMLFormElement>): void => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const trimmedValue = this.state.inputValue.trim();
-    this.setState({ showHistory: false });
-    this.props.onSearch(trimmedValue);
+    const trimmedValue = inputValue.trim();
+    setShowHistory(false);
+    onSearch(trimmedValue);
   };
 
-  handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      const trimmedValue = this.state.inputValue.trim();
-      this.setState({ showHistory: false });
-      this.props.onSearch(trimmedValue);
+      const trimmedValue = inputValue.trim();
+      setShowHistory(false);
+      onSearch(trimmedValue);
     }
     if (e.key === 'Escape') {
-      this.setState({ showHistory: false });
+      setShowHistory(false);
     }
   };
 
-  handleHistoryItemClick = (term: string): void => {
-    this.setState({ inputValue: term, showHistory: false });
-    this.props.onSearch(term);
+  const handleHistoryItemClick = (term: string) => {
+    setInputValue(term);
+    setShowHistory(false);
+    onSearch(term);
   };
 
-  handleRemoveItem = (e: React.MouseEvent, term: string): void => {
+  const handleRemoveItem = (e: React.MouseEvent, term: string) => {
     e.stopPropagation();
-    this.props.onRemoveHistoryItem(term);
+    onRemoveHistoryItem(term);
   };
 
-  render() {
-    const { isLoading, searchHistory } = this.props;
-    const { inputValue, showHistory } = this.state;
+  const filteredHistory = inputValue.trim()
+    ? searchHistory.filter((item) =>
+        item.toLowerCase().includes(inputValue.trim().toLowerCase())
+      )
+    : searchHistory;
 
-    const filteredHistory = inputValue.trim()
-      ? searchHistory.filter((item) =>
-          item.toLowerCase().includes(inputValue.trim().toLowerCase())
-        )
-      : searchHistory;
-
-    return (
-      <header className="search-section" id="search-section">
-        <h1 className="search-title">Rick & Morty Explorer</h1>
-        <form className="search-form" onSubmit={this.handleSubmit} id="search-form">
-          <div className="search-input-wrapper" ref={this.wrapperRef}>
-            <input
-              id="search-input"
-              type="text"
-              className="search-input"
-              placeholder="Search characters..."
-              value={inputValue}
-              onChange={this.handleInputChange}
-              onFocus={this.handleFocus}
-              onKeyDown={this.handleKeyDown}
-              disabled={isLoading}
-              autoComplete="off"
-            />
-            {showHistory && filteredHistory.length > 0 && (
-              <div className="search-history-dropdown" id="search-history">
-                <div className="search-history-label">Recent searches</div>
-                {filteredHistory.map((term) => (
-                  <div
-                    key={term}
-                    className="search-history-item"
-                    onClick={() => this.handleHistoryItemClick(term)}
-                  >
-                    <span className="search-history-text">{term}</span>
-                    <button
-                      type="button"
-                      className="search-history-remove"
-                      onClick={(e) => this.handleRemoveItem(e, term)}
-                      aria-label={`Remove ${term} from history`}
-                    >
-                      x
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          <button
-            id="search-button"
-            type="submit"
-            className="search-button"
+  return (
+    <header className="search-section" id="search-section">
+      <h1 className="search-title">Rick & Morty Explorer</h1>
+      <form className="search-form" onSubmit={handleSubmit} id="search-form">
+        <div className="search-input-wrapper" ref={wrapperRef}>
+          <input
+            id="search-input"
+            type="text"
+            className="search-input"
+            placeholder="Search characters..."
+            value={inputValue}
+            onChange={handleInputChange}
+            onFocus={handleFocus}
+            onKeyDown={handleKeyDown}
             disabled={isLoading}
-          >
-            {isLoading ? (
-              <span className="button-spinner" />
-            ) : (
-              <span>Search</span>
-            )}
-          </button>
-        </form>
-      </header>
-    );
-  }
+            autoComplete="off"
+          />
+          {showHistory && filteredHistory.length > 0 && (
+            <div className="search-history-dropdown" id="search-history">
+              <div className="search-history-label">Recent searches</div>
+              {filteredHistory.map((term) => (
+                <div
+                  key={term}
+                  className="search-history-item"
+                  onClick={() => handleHistoryItemClick(term)}
+                >
+                  <span className="search-history-text">{term}</span>
+                  <button
+                    type="button"
+                    className="search-history-remove"
+                    onClick={(e) => handleRemoveItem(e, term)}
+                    aria-label={`Remove ${term} from history`}
+                  >
+                    x
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <button
+          id="search-button"
+          type="submit"
+          className="search-button"
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <span className="button-spinner" />
+          ) : (
+            <span>Search</span>
+          )}
+        </button>
+      </form>
+    </header>
+  );
 }
 
 export default Search;

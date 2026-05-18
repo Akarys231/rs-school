@@ -1,35 +1,23 @@
-import { Component } from 'react';
-import type { ErrorButtonState } from '../types';
+import { useState } from 'react';
 import './ErrorButton.css';
 
-class ErrorButton extends Component<object, ErrorButtonState> {
-  constructor(props: object) {
-    super(props);
-    this.state = {
-      shouldThrow: false,
-    };
+function ErrorButton() {
+  const [isErrorThrown, setIsErrorThrown] = useState(false);
+
+  if (isErrorThrown) {
+    throw new Error('Test error triggered by ErrorButton — this is intentional!');
   }
 
-  handleClick = (): void => {
-    this.setState({ shouldThrow: true });
-  };
-
-  render() {
-    if (this.state.shouldThrow) {
-      throw new Error('Test error triggered by ErrorButton — this is intentional!');
-    }
-
-    return (
-      <button
-        className="error-trigger-button"
-        onClick={this.handleClick}
-        id="error-trigger-button"
-        title="Click to simulate an application error"
-      >
-        Trigger Error
-      </button>
-    );
-  }
+  return (
+    <button
+      className="error-trigger-button"
+      onClick={() => setIsErrorThrown(true)}
+      id="error-trigger-button"
+      title="Click to simulate an application error"
+    >
+      Trigger Error
+    </button>
+  );
 }
 
 export default ErrorButton;

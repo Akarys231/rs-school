@@ -1,4 +1,4 @@
-import type { ApiResponse } from './types';
+import type { ApiResponse, Character } from './types';
 
 const BASE_URL = 'https://rickandmortyapi.com/api/character';
 
@@ -30,4 +30,17 @@ export async function fetchCharacters(
 
   const data: ApiResponse = await response.json();
   return data;
+}
+
+export async function fetchCharacterById(id: number): Promise<Character> {
+  const response = await fetch(`${BASE_URL}/${id}`);
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch character: ${response.status} ${response.statusText}`
+    );
+  }
+
+  const character: Character = await response.json();
+  return character;
 }

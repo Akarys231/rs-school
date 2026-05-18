@@ -1,11 +1,10 @@
-import { Component } from 'react';
+import { useMemo } from 'react';
 import type { PaginationProps } from '../types';
 import './Pagination.css';
 
-class Pagination extends Component<PaginationProps> {
-  private getPageNumbers(): number[] {
-    const { currentPage, totalPages } = this.props;
-    const pages: number[] = [];
+function Pagination({ currentPage, totalPages, onPageChange, isLoading }: PaginationProps) {
+  const pages = useMemo(() => {
+    const pagesArray: number[] = [];
     const maxVisible = 5;
 
     let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
@@ -16,78 +15,72 @@ class Pagination extends Component<PaginationProps> {
     }
 
     for (let i = start; i <= end; i++) {
-      pages.push(i);
+      pagesArray.push(i);
     }
 
-    return pages;
-  }
+    return pagesArray;
+  }, [currentPage, totalPages]);
 
-  render() {
-    const { currentPage, totalPages, onPageChange, isLoading } = this.props;
+  if (totalPages <= 1) return null;
 
-    if (totalPages <= 1) return null;
+  return (
+    <div className="pagination" id="pagination">
+      <button
+        className="pagination-btn"
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage === 1 || isLoading}
+      >
+        Prev
+      </button>
 
-    const pages = this.getPageNumbers();
-
-    return (
-      <div className="pagination" id="pagination">
-        <button
-          className="pagination-btn"
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1 || isLoading}
-        >
-          Prev
-        </button>
-
-        {pages[0] > 1 && (
-          <>
-            <button
-              className="pagination-btn"
-              onClick={() => onPageChange(1)}
-              disabled={isLoading}
-            >
-              1
-            </button>
-            {pages[0] > 2 && <span className="pagination-dots">...</span>}
-          </>
-        )}
-
-        {pages.map((page) => (
+      {pages[0] > 1 && (
+        <>
           <button
-            key={page}
-            className={`pagination-btn ${page === currentPage ? 'pagination-btn-active' : ''}`}
-            onClick={() => onPageChange(page)}
+            className="pagination-btn"
+            onClick={() => onPageChange(1)}
             disabled={isLoading}
           >
-            {page}
+            1
           </button>
-        ))}
+          {pages[0] > 2 && <span className="pagination-dots">...</span>}
+        </>
+      )}
 
-        {pages[pages.length - 1] < totalPages && (
-          <>
-            {pages[pages.length - 1] < totalPages - 1 && (
-              <span className="pagination-dots">...</span>
-            )}
-            <button
-              className="pagination-btn"
-              onClick={() => onPageChange(totalPages)}
-              disabled={isLoading}
-            >
-              {totalPages}
-            </button>
-          </>
-        )}
-
+      {pages.map((page) => (
         <button
-          className="pagination-btn"
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages || isLoading}
+          key={page}
+          className={`pagination-btn ${page === currentPage ? 'pagination-btn-active' : ''}`}
+          onClick={() => onPageChange(page)}
+          disabled={isLoading}
         >
-          Next
+          {page}
         </button>
-      </div>
-    );
-  }
+      ))}
+
+      {pages[pages.length - 1] < totalPages && (
+        <>
+          {pages[pages.length - 1] < totalPages - 1 && (
+            <span className="pagination-dots">...</span>
+          )}
+          <button
+            className="pagination-btn"
+            onClick={() => onPageChange(totalPages)}
+            disabled={isLoading}
+          >
+            {totalPages}
+          </button>
+        </>
+      )}
+
+      <button
+        className="pagination-btn"
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage === totalPages || isLoading}
+      >
+        Next
+      </button>
+    </div>
+  );
 }
 
 export default Pagination;
