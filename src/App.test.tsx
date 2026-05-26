@@ -89,7 +89,7 @@ describe('App Integration', () => {
 
   it('displays error message when API call fails', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    mockFetch.mockTarget = mockFetch.mockRejectedValueOnce(new Error('Network error'));
+    mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
     renderWithRouter();
 
