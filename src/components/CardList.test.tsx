@@ -36,10 +36,9 @@ const mockCharacters: Character[] = [
 ];
 
 describe('CardList', () => {
-  it('рендерит список карточек при наличии данных', () => {
+  it('renders a list of cards when data is present', () => {
     render(<CardList characters={mockCharacters} />);
 
-    // Компонент Card использует тег <article>
     const articles = screen.getAllByRole('article');
     expect(articles).toHaveLength(2);
 
@@ -47,7 +46,7 @@ describe('CardList', () => {
     expect(screen.getByText('Morty Smith')).toBeInTheDocument();
   });
 
-  it('отображает сообщение об отсутствии результатов при пустом массиве', () => {
+  it('displays empty message when character list is empty', () => {
     render(<CardList characters={[]} />);
 
     expect(screen.queryAllByRole('article')).toHaveLength(0);
@@ -57,17 +56,67 @@ describe('CardList', () => {
     ).toBeInTheDocument();
   });
 
-  it('передает onCardClick в дочерние компоненты Card', async () => {
+  it('passes onCardClick to child Card components', async () => {
     const user = userEvent.setup();
     const handleCardClick = vi.fn();
     
     render(<CardList characters={mockCharacters} onCardClick={handleCardClick} />);
     
-    // Кликаем по второй карточке "Morty Smith" (id: 2)
     const secondCard = screen.getByRole('button', { name: `View details for ${mockCharacters[1].name}` });
     await user.click(secondCard);
     
     expect(handleCardClick).toHaveBeenCalledTimes(1);
     expect(handleCardClick).toHaveBeenCalledWith(2);
+  });
+
+  it('renders unchecked checkbox for unselected cards', () => {
+    const handleToggle = vi.fn();
+    render(
+      <CardList
+        characters={mockCharacters}
+        selectedItems={{}}
+        onToggleSelect={handleToggle}
+      />
+    );
+
+    const checkboxes = screen.getAllByRole('checkbox');
+    expect(checkboxes).toHaveLength(2);
+    expect(checkboxes[0]).not.toBeChecked();
+    expect(checkboxes[1]).not.toBeChecked();
+  });
+
+  it('renders checked checkbox for selected cards', () => {
+    const handleToggle = vi.fn();
+    render(
+      <CardList
+        characters={mockCharacters}
+        selectedItems={{ 1: mockCharacters[0] }}
+        onToggleSelect={handleToggle}
+      />
+    );
+
+    const checkboxes = screen.getAllByRole('checkbox');
+    expect(checkboxes).toHaveLength(2);
+    expect(checkboxes[0]).toBeChecked();
+    expect(checkboxes[1]).not.toBeChecked();
+  });
+
+  it('passes onToggleSelect to child Cards and delegates toggle call', async () => {
+    const user = userEvent.setup();
+    const handleToggle = vi.fn();
+
+    render(
+      <CardList
+        characters={mockCharacters}
+        selectedItems={{}}
+        onToggleSelect={handleToggle}
+      />
+    );
+
+    const checkboxes = screen.getAllByRole('checkbox');
+    await user.click(checkboxes[0]);
+
+    expect(handleToggle).toHaveBeenCalledTimes(1);
+    expect(handleToggle).toHaveBeenCalledWith(mockCharacters[0]);
   });
 });

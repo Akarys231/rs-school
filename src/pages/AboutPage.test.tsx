@@ -3,19 +3,23 @@ import { describe, it, expect } from 'vitest';
 import AboutPage from './AboutPage';
 
 describe('AboutPage', () => {
-  it('рендерит заголовок и описание', () => {
+  it('renders heading and description with developer link', () => {
     render(<AboutPage />);
     
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('About This App');
-    expect(screen.getByText(/created by a developer/i)).toBeInTheDocument();
+    
+    const githubLink = screen.getByRole('link', { name: 'Akarys231' });
+    expect(githubLink).toBeInTheDocument();
+    expect(githubLink).toHaveAttribute('href', 'https://github.com/Akarys231');
+    expect(githubLink).toHaveAttribute('target', '_blank');
   });
 
-  it('рендерит ссылку на RS School', () => {
+  it('renders link to RS School React Course', () => {
     render(<AboutPage />);
     
-    const link = screen.getByRole('link', { name: /RS School React Course/i });
-    expect(link).toBeInTheDocument();
-    expect(link).toHaveAttribute('href', 'https://rs.school/react/');
-    expect(link).toHaveAttribute('target', '_blank');
+    const courseLink = screen.getByRole('link', { name: /RS School React Course/i });
+    expect(courseLink).toBeInTheDocument();
+    expect(courseLink).toHaveAttribute('href', 'https://rs.school/courses/reactjs');
+    expect(courseLink).toHaveAttribute('target', '_blank');
   });
 });

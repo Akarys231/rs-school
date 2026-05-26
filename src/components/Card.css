@@ -103,3 +103,28 @@
   font-size: 12px;
   color: var(--text);
 }
+
+.card-selected {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 2px var(--blue-border);
+}
+
+.card-checkbox-label {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.card-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--blue);
+}

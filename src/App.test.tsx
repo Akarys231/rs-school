@@ -4,9 +4,9 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import App from './App';
 import { fetchCharacters, fetchCharacterById } from './api';
+import { useSelectedItemsStore } from './store/selectedItemsStore';
 import type { ApiResponse } from './types';
 
-// Мокаем API
 vi.mock('./api', () => ({
   fetchCharacters: vi.fn(),
   fetchCharacterById: vi.fn(),
@@ -34,7 +34,6 @@ const mockApiResponse: ApiResponse = {
   ],
 };
 
-// Helper component to observe location
 let locationState: Record<string, unknown> | ReturnType<typeof useLocation> = {};
 function LocationObserver() {
   const location = useLocation();
@@ -59,29 +58,26 @@ describe('App Integration', () => {
     mockFetch.mockReset();
     window.scrollTo = vi.fn();
     locationState = {};
+    useSelectedItemsStore.setState({ selectedItems: {} });
   });
 
-  it('вызывает API с пустым значением по умолчанию и рендерит данные', async () => {
+  it('fetches characters with default query and renders results', async () => {
     mockFetch.mockResolvedValueOnce(mockApiResponse);
 
     renderWithRouter();
 
-    // Во время загрузки показывается спиннер
     expect(screen.getByText('Loading...')).toBeInTheDocument();
 
-    // Ждем окончания загрузки
     await waitFor(() => {
       expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
     });
 
     expect(mockFetch).toHaveBeenCalledWith('', 1);
     expect(screen.getByText('Rick Sanchez')).toBeInTheDocument();
-    
-    // Пагинация должна отрендериться, так как pages: 2
     expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
   });
 
-  it('использует значение search из URL при монтировании', async () => {
+  it('uses search and page from URL parameters on initialization', async () => {
     mockFetch.mockResolvedValueOnce(mockApiResponse);
 
     renderWithRouter('/?search=Morty&page=2');
@@ -91,9 +87,9 @@ describe('App Integration', () => {
     });
   });
 
-  it('показывает сообщение об ошибке при сбое API', async () => {
+  it('displays error message when API call fails', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+    mockFetch.mockTarget = mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
     renderWithRouter();
 
@@ -105,7 +101,7 @@ describe('App Integration', () => {
     consoleSpy.mockRestore();
   });
 
-  it('показывает сообщение "No characters found" при пустом ответе', async () => {
+  it('shows no characters message when result list is empty', async () => {
     mockFetch.mockResolvedValueOnce({
       info: { count: 0, pages: 0, next: null, prev: null },
       results: [],
@@ -118,7 +114,7 @@ describe('App Integration', () => {
     });
   });
 
-  it('обновляет URL при поиске и сбрасывает страницу на 1', async () => {
+  it('updates URL and local storage when performing a search', async () => {
     mockFetch.mockResolvedValue(mockApiResponse); 
     const user = userEvent.setup();
 
@@ -143,7 +139,7 @@ describe('App Integration', () => {
     expect(localStorage.getItem('rick-morty-search-term')).toBe('"Summer"');
   });
 
-  it('обновляет URL при переключении страницы', async () => {
+  it('updates URL when changing page', async () => {
     mockFetch.mockResolvedValue(mockApiResponse);
     const user = userEvent.setup();
 
@@ -165,7 +161,7 @@ describe('App Integration', () => {
     expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' }); 
   });
 
-  it('открывает панель деталей при клике на карточку, добавляя details в URL', async () => {
+  it('opens details panel and updates URL when clicking card', async () => {
     mockFetch.mockResolvedValueOnce(mockApiResponse);
     vi.mocked(fetchCharacterById).mockResolvedValueOnce(mockApiResponse.results[0]);
     const user = userEvent.setup();
@@ -180,5 +176,35 @@ describe('App Integration', () => {
     await user.click(card);
 
     expect(locationState.search).toContain('details=1');
+  });
+
+  it('toggles selection and persists state across search and navigation actions', async () => {
+    mockFetch.mockResolvedValue(mockApiResponse);
+    const user = userEvent.setup();
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(screen.getByText('Rick Sanchez')).toBeInTheDocument();
+    });
+
+    const checkbox = screen.getByRole('checkbox', { name: 'Select Rick Sanchez' });
+    expect(checkbox).not.toBeChecked();
+
+    await user.click(checkbox);
+    expect(checkbox).toBeChecked();
+
+    const input = screen.getByRole('textbox');
+    const searchButton = screen.getByRole('button', { name: /search/i });
+
+    await user.type(input, 'Morty');
+    await user.click(searchButton);
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith('Morty', 1);
+    });
+
+    const state = useSelectedItemsStore.getState();
+    expect(state.selectedItems[1]).toEqual(mockApiResponse.results[0]);
   });
 });

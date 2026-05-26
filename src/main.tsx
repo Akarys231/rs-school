@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { ThemeProvider } from './context/ThemeContext';
 import App from './App';
 import MainPage from './pages/MainPage';
 import AboutPage from './pages/AboutPage';
@@ -15,7 +16,7 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <App />, // App currently holds search, list, etc.
+        element: <App />,
       },
       {
         path: 'about',
@@ -31,6 +32,9 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <ThemeProvider>
+      <RouterProvider router={router} />
+    </ThemeProvider>
   </StrictMode>
 );
+

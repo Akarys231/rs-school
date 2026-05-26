@@ -27,20 +27,18 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #94a3b8;
-    --text-h: #f1f5f9;
-    --bg: #0f172a;
-    --bg-secondary: #1e293b;
-    --border: #334155;
-    --blue: #3b82f6;
-    --blue-light: #60a5fa;
-    --blue-dark: #2563eb;
-    --blue-bg: rgba(59, 130, 246, 0.1);
-    --blue-border: rgba(59, 130, 246, 0.3);
-    --red: #ef4444;
-  }
+[data-theme="dark"] {
+  --text: #94a3b8;
+  --text-h: #f1f5f9;
+  --bg: #0f172a;
+  --bg-secondary: #1e293b;
+  --border: #334155;
+  --blue: #3b82f6;
+  --blue-light: #60a5fa;
+  --blue-dark: #2563eb;
+  --blue-bg: rgba(59, 130, 246, 0.1);
+  --blue-border: rgba(59, 130, 246, 0.3);
+  --red: #ef4444;
 }
 
 *,

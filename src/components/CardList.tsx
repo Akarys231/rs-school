@@ -2,7 +2,7 @@ import Card from './Card';
 import type { CardListProps } from '../types';
 import './CardList.css';
 
-function CardList({ characters, onCardClick }: CardListProps) {
+function CardList({ characters, selectedItems = {}, onCardClick, onToggleSelect }: CardListProps) {
   if (characters.length === 0) {
     return (
       <div className="cardlist-empty" id="no-results">
@@ -20,7 +20,9 @@ function CardList({ characters, onCardClick }: CardListProps) {
         <Card
           key={character.id}
           character={character}
+          isSelected={character.id in selectedItems}
           onCardClick={onCardClick}
+          onToggleSelect={onToggleSelect}
         />
       ))}
     </div>

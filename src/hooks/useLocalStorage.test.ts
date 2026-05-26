@@ -67,7 +67,6 @@ describe('useLocalStorage', () => {
       result.current[1]('updated');
     });
 
-    // State updates even though persistence failed
     expect(result.current[0]).toBe('updated');
 
     spy.mockRestore();

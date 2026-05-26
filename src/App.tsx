@@ -6,9 +6,12 @@ import Spinner from './components/Spinner';
 import ErrorMessage from './components/ErrorMessage';
 import ErrorButton from './components/ErrorButton';
 import Pagination from './components/Pagination';
+import Flyout from './components/Flyout';
 import DetailsPanel from './pages/DetailsPanel';
 import { fetchCharacters } from './api';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import { useSelectedItemsStore } from './store/selectedItemsStore';
+import { downloadCsv } from './utils/downloadCsv';
 import type { Character } from './types';
 import './App.css';
 
@@ -26,7 +29,9 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [totalPages, setTotalPages] = useState(0);
 
-  // Sync with URL params
+  const selectedItems = useSelectedItemsStore((state) => state.selectedItems);
+  const toggleItem = useSelectedItemsStore((state) => state.toggleItem);
+
   const urlPage = parseInt(searchParams.get('page') || '1', 10);
   const urlSearch = searchParams.get('search') ?? localSearchTerm;
   const isDetailsOpen = searchParams.has('details');
@@ -67,7 +72,7 @@ function App() {
 
     const newParams = new URLSearchParams(searchParams);
     newParams.set('search', trimmedTerm);
-    newParams.set('page', '1'); // Reset to page 1 on new search
+    newParams.set('page', '1');
     setSearchParams(newParams);
   };
 
@@ -88,6 +93,10 @@ function App() {
     setSearchParams(newParams);
   };
 
+  const handleDownload = () => {
+    downloadCsv(Object.values(selectedItems));
+  };
+
   return (
     <div className="app-content">
       <Search
@@ -104,7 +113,12 @@ function App() {
           {!isLoading && error && <ErrorMessage message={error} />}
           {!isLoading && !error && (
             <>
-              <CardList characters={characters} onCardClick={handleCardClick} />
+              <CardList
+                characters={characters}
+                selectedItems={selectedItems}
+                onCardClick={handleCardClick}
+                onToggleSelect={toggleItem}
+              />
               <Pagination
                 currentPage={urlPage}
                 totalPages={totalPages}
@@ -119,6 +133,7 @@ function App() {
       </div>
       
       <ErrorButton />
+      <Flyout onDownload={handleDownload} />
     </div>
   );
 }

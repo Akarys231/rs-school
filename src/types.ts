@@ -47,12 +47,16 @@ export interface SearchProps {
 
 export interface CardProps {
   character: Character;
+  isSelected?: boolean;
   onCardClick?: (id: number) => void;
+  onToggleSelect?: (character: Character) => void;
 }
 
 export interface CardListProps {
   characters: Character[];
+  selectedItems?: Record<number, Character>;
   onCardClick?: (id: number) => void;
+  onToggleSelect?: (character: Character) => void;
 }
 
 export interface ErrorBoundaryProps {

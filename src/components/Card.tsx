@@ -12,7 +12,7 @@ function getStatusColor(status: string): string {
   }
 }
 
-function Card({ character, onCardClick }: CardProps) {
+function Card({ character, isSelected = false, onCardClick, onToggleSelect }: CardProps) {
   const statusColor = getStatusColor(character.status);
 
   const handleClick = () => {
@@ -26,9 +26,14 @@ function Card({ character, onCardClick }: CardProps) {
     }
   };
 
+  const handleCheckboxChange = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onToggleSelect?.(character);
+  };
+
   return (
     <article
-      className="card"
+      className={`card ${isSelected ? 'card-selected' : ''}`}
       id={`card-${character.id}`}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
@@ -49,6 +54,17 @@ function Card({ character, onCardClick }: CardProps) {
         >
           {character.status}
         </span>
+        {onToggleSelect && (
+          <label className="card-checkbox-label" onClick={handleCheckboxChange}>
+            <input
+              type="checkbox"
+              className="card-checkbox"
+              checked={isSelected}
+              onChange={() => {}}
+              aria-label={`Select ${character.name}`}
+            />
+          </label>
+        )}
       </div>
       <div className="card-body">
         <h3 className="card-name">{character.name}</h3>
